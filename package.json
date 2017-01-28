@@ -1,0 +1,22 @@
+{
+  "name": "hindley-milner-search",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kedashoe/hindley-milner-search.git"
+  },
+  "version": "0.0.0",
+  "description": "search hindley-milner signatures",
+  "main": "hm-search.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "dependencies": {
+    "fuse.js": "^2.6.1",
+    "hindley-milner-parser-js": "^0.1.6"
+  },
+  "devDependencies": {
+    "tape": "^4.6.3",
+    "xyz": "^2.1.0"
+  }
+}
