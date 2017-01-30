@@ -24,6 +24,6 @@ for file in "${files[@]}"; do
   fi
   cp $file $publish_dir
 done
-exit
+
 npm publish $publish_dir
 
