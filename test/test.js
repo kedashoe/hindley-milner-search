@@ -41,6 +41,12 @@ Tape.test('search by name', t => {
   ]);
   run('flip', ['flip :: ((a, b) -> c) -> b -> a -> c']);
   run('zzzzz', []);
+  run('map', [
+    'mapMaybe :: (a -> Maybe b) -> Array a -> Array b',
+    'Maybe#map :: Maybe a ~> (a -> b) -> Maybe b',
+    'Either#map :: Either a b ~> (b -> c) -> Either a c'
+  ]);
+  run('Maybe#map', ['Maybe#map :: Maybe a ~> (a -> b) -> Maybe b']);
   t.end();
 });
 

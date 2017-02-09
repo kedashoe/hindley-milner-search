@@ -39,6 +39,21 @@ function propIs(f, key) {
   };
 }
 
+function pathIs(f, path) {
+  return function(x) {
+    for (var i = 0; i < path.length; ++i) {
+      x = x[path[i]];
+    }
+    return f(x);
+  };
+}
+
+function isSubstr(sub) {
+  return function(str) {
+    return str.indexOf(sub) > -1;
+  };
+}
+
 function lt(a) {
   return function(b) {
     return b < a;
@@ -168,6 +183,11 @@ function nameSearch(db, name) {
     var keepers = takeWhile(propIs(lt(NAME_FUZZY_CUTOFF), 'score'), fuzzyResult);
     if (keepers.length === 0) {
       keepers = take(5, fuzzyResult);
+    }
+    else {
+      if (isSubstr(name)(keepers[0].item.name)) {
+        keepers = takeWhile(pathIs(isSubstr(name), ['item', 'name']), keepers);
+      }
     }
     return pluck('item', keepers);
   }
