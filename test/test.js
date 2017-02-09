@@ -68,19 +68,33 @@ Tape.test('search by function', t => {
     'parseInt :: Integer -> String -> Maybe Integer'
   ]);
   run('a -> Maybe b', [
+    'Maybe#equals :: Maybe a ~> b -> Boolean',
     'Maybe#ap :: Maybe (a -> b) ~> Maybe a -> Maybe b',
+    'Maybe#of :: Maybe a ~> b -> Maybe b',
     'Maybe#chain :: Maybe a ~> (a -> Maybe b) -> Maybe b',
+    'Maybe#reduce :: Maybe a ~> ((b, a) -> b) -> b -> b',
+    'maybe :: b -> (a -> b) -> Maybe a -> b',
+    'maybe_ :: (() -> b) -> (a -> b) -> Maybe a -> b',
     'encase :: (a -> b) -> a -> Maybe b',
     'maybeToEither :: a -> Maybe b -> Either a b',
-    'eitherToMaybe :: Either a b -> Maybe b',
-    'get :: Accessible a => TypeRep b -> String -> a -> Maybe b',
-    'gets :: Accessible a => TypeRep b -> Array String -> a -> Maybe b'
+    'eitherToMaybe :: Either a b -> Maybe b'
   ]);
   run('Either -> Maybe', ['eitherToMaybe :: Either a b -> Maybe b']);
   run('(a -> b) -> f a', [
     'lift :: Functor f => (a -> b) -> f a -> f b',
     'lift2 :: Apply f => (a -> b -> c) -> f a -> f b -> f c',
     'lift3 :: Apply f => (a -> b -> c -> d) -> f a -> f b -> f c -> f d'
+  ]);
+  t.end();
+});
+
+Tape.test('search by type variable', t => {
+  let run = testWith(t);
+  run('(x -> Boolean) -> y', ['ifElse :: (a -> Boolean) -> (a -> b) -> (a -> b) -> a -> b']);
+  run('a -> Either b c', [
+    'Either#equals :: Either a b ~> c -> Boolean',
+    'Either#of :: Either a b ~> c -> Either a c',
+    'Either#chain :: Either a b ~> (b -> Either a c) -> Either a c'
   ]);
   t.end();
 });

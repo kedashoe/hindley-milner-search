@@ -77,6 +77,44 @@ function methodToFunction(x) {
   return x;
 }
 
+function TypeClone(type) {
+  return {
+    type: type.type,
+    text: type.text,
+    children: [],
+  };
+}
+
+// depth first
+// eg
+// (b -> c) -> a -> c
+// becomes
+// (t0 -> t1) -> t2 -> t1
+function _compileTypeVariables(type, state) {
+  var compiled = TypeClone(type);
+  if (type.type === 'typevar') {
+    if (!(type.text in state.vars)) {
+      state.vars[type.text] = 't'+state.counter;
+      state.counter++;
+    }
+    compiled.text = state.vars[type.text];
+  }
+  for (var i = 0; i < type.children.length; ++i) {
+    compiled.children.push(_compileTypeVariables(type.children[i], state));
+  }
+  return compiled;
+}
+
+function compileTypeVariables(type) {
+  var state = {
+    counter: 0,
+    vars: {},
+  };
+  return _compileTypeVariables(type, state);
+}
+
+// todo: move parsed value to its own field
+// we are mixing the object returned by HMP.parse with our own fields
 function indexParse(sig, i) {
   var indexed = databaseParse(sig);
   indexed.signature = sig;
@@ -154,6 +192,9 @@ function searchParse(x) {
         constraints: [],
         type: parsed,
       };
+    }
+    if (parsed.type.type !== '*') {
+      parsed.type = compileTypeVariables(parsed.type);
     }
     return parsed;
   }
@@ -251,10 +292,16 @@ function typeSearch(db, type) {
   return after;
 }
 
+function compileIndexTypeVariables(item) {
+  item.type = compileTypeVariables(item.type);
+  return item;
+}
+
 function index(sigs) {
   return (sigs
     .map(indexParse)
     .map(when(isMethod, methodToFunction))
+    .map(compileIndexTypeVariables)
   );
 }
 
