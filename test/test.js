@@ -43,8 +43,14 @@ Tape.test('search by name', t => {
   run('zzzzz', []);
   run('map', [
     'mapMaybe :: (a -> Maybe b) -> Array a -> Array b',
+    'Either#map :: Either a b ~> (b -> c) -> Either a c',
+    'Maybe#ap :: Maybe (a -> b) ~> Maybe a -> Maybe b',
+    'MaybeType :: Type -> Type',
     'Maybe#map :: Maybe a ~> (a -> b) -> Maybe b',
-    'Either#map :: Either a b ~> (b -> c) -> Either a c'
+    'Maybe.empty :: () -> Maybe a',
+    'Maybe#empty :: Maybe a ~> Maybe a',
+    'Maybe#@@type :: Maybe a ~> String',
+    'Maybe#inspect :: Maybe a ~> () -> String'
   ]);
   run('Maybe#map', ['Maybe#map :: Maybe a ~> (a -> b) -> Maybe b']);
   t.end();

@@ -12,7 +12,6 @@
     "test": "node test/test.js"
   },
   "dependencies": {
-    "fuse.js": "^2.6.1",
     "hindley-milner-parser-js": "^0.1.6"
   },
   "devDependencies": {

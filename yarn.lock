@@ -135,10 +135,6 @@ function-bind@^1.0.2, function-bind@^1.1.0, function-bind@~1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/function-bind/-/function-bind-1.1.0.tgz#16176714c801798e4e8f2cf7f7529467bb4a5771"
 
-fuse.js@2.6.1:
-  version "2.6.1"
-  resolved "https://registry.yarnpkg.com/fuse.js/-/fuse.js-2.6.1.tgz#d118e00f9a859f7b354ed4f7740214249e32a57a"
-
 glob@~7.1.1:
   version "7.1.1"
   resolved "https://registry.yarnpkg.com/glob/-/glob-7.1.1.tgz#805211df04faaf1c63a3600306cdf5ade50b2ec8"
@@ -156,9 +152,9 @@ has@~1.0.1:
   dependencies:
     function-bind "^1.0.2"
 
-hindley-milner-parser-js@0.1.5:
-  version "0.1.5"
-  resolved "https://registry.yarnpkg.com/hindley-milner-parser-js/-/hindley-milner-parser-js-0.1.5.tgz#c8ec36c54b5d7940c0b8a4dc397ebf5d25b6fd96"
+hindley-milner-parser-js@^0.1.6:
+  version "0.1.6"
+  resolved "https://registry.yarnpkg.com/hindley-milner-parser-js/-/hindley-milner-parser-js-0.1.6.tgz#4386602437b3b52bd26bd6db7d95dfe9d2b8b52a"
   dependencies:
     mona "^0.9.1"
 
@@ -258,7 +254,7 @@ string.prototype.trim@~1.1.2:
     es-abstract "^1.5.0"
     function-bind "^1.0.2"
 
-tape@4.6.3:
+tape@^4.6.3:
   version "4.6.3"
   resolved "https://registry.yarnpkg.com/tape/-/tape-4.6.3.tgz#637e77581e9ab2ce17577e9bd4ce4f575806d8b6"
   dependencies:

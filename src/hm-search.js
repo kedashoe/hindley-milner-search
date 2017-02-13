@@ -1,19 +1,4 @@
 var HMP = require('hindley-milner-parser-js');
-var FuzzySearch = require('fuse.js');
-
-function takeWhile(f, xs) {
-  var ys = [];
-  for (var i = 0; i < xs.length; ++i) {
-    var x = xs[i];
-    if (f(x)) {
-      ys.push(x);
-    }
-    else {
-      break;
-    }
-  }
-  return ys;
-}
 
 function pluck(key, xs) {
   var ys = [];
@@ -26,37 +11,6 @@ function pluck(key, xs) {
 function when(pred, f) {
   return function(x) {
     return pred(x) ? f(x) : x;
-  };
-}
-
-function take(n, xs) {
-  return xs.slice(0, n);
-}
-
-function propIs(f, key) {
-  return function(x) {
-    return f(x[key]);
-  };
-}
-
-function pathIs(f, path) {
-  return function(x) {
-    for (var i = 0; i < path.length; ++i) {
-      x = x[path[i]];
-    }
-    return f(x);
-  };
-}
-
-function isSubstr(sub) {
-  return function(str) {
-    return str.indexOf(sub) > -1;
-  };
-}
-
-function lt(a) {
-  return function(b) {
-    return b < a;
   };
 }
 
@@ -128,13 +82,10 @@ function databaseParse(sig) {
     x = HMP.parse(sig);
   }
   catch (e) {
-    // if we couldn't compile, use entire string as name
-    // so users can still find it
-    x = {
-      name: sig,
-      constraints: [],
-      type: { type: '??', text: '', children: [] }
-    };
+    // if we couldn't compile, get name
+    // set type to unknown
+    x = nameParser(sig);
+    x.type = { type: '??', text: '', children: [] };
   }
   return x;
 }
@@ -200,37 +151,65 @@ function searchParse(x) {
   }
 }
 
-// fuse has a default threshold of 0.6
-// seems very liberal, for "good" results we'll use 0.4
-// if we get anything better than that (lower value)
-// only return those results
-// if we don't have anything better, return 5 best results
-var NAME_FUZZY_CUTOFF = 0.4;
-
-function nameSearch(db, name) {
-  if (name === '*') {
-    return db;
-  }
-  var searcher = new FuzzySearch(db, {
-    keys: ['name'],
-    include: ['score'],
-    threshold: 1,
-  });
-  var fuzzyResult = searcher.search(name);
-  if (fuzzyResult.length === 0) {
-    return [];
-  }
-  else {
-    var keepers = takeWhile(propIs(lt(NAME_FUZZY_CUTOFF), 'score'), fuzzyResult);
-    if (keepers.length === 0) {
-      keepers = take(5, fuzzyResult);
-    }
-    else {
-      if (isSubstr(name)(keepers[0].item.name)) {
-        keepers = takeWhile(pathIs(isSubstr(name), ['item', 'name']), keepers);
+function fuzzyScore(item, input) {
+  item = item.toLowerCase();
+  var i = 0;
+  var j = 0;
+  var score = 0;
+  var run = 1;
+  for (; i < input.length; ++i, ++j) {
+    for (; j < item.length; ++j) {
+      if (input[i] === item[j]) {
+        score += run;
+        run *= 2;
+        break;
+      }
+      else {
+        run = 1;
       }
     }
-    return pluck('item', keepers);
+    if (j === item.length) {
+      // did not match, negative score!
+      return -1;
+    }
+  }
+  // divide score by length of item so
+  // "foo" matches "foo" better than "foobar"
+  return score / item.length;
+}
+
+function scoreCmp(a, b) {
+  if (a.score !== b.score) {
+    return b.score - a.score;
+  }
+  else {
+    return b.item.name > a.item.name ? 1 : -1;
+  }
+}
+
+function scoreSort(x) {
+  return x.sort(scoreCmp);
+}
+
+function nameSearch(db, inputName) {
+  if (inputName === '*') {
+    return db;
+  }
+  else {
+    var i, item, score;
+    var r = [];
+    inputName = inputName.toLowerCase();
+    for (i = 0; i < db.length; ++i) {
+      item = db[i];
+      score = fuzzyScore(item.name, inputName);
+      if (score > 0) {
+        r.push({
+          item: item,
+          score: score,
+        });
+      }
+    }
+    return pluck('item', scoreSort(r));
   }
 }
 
@@ -318,5 +297,4 @@ module.exports = {
   index: index,
   search: search,
 };
-
 
