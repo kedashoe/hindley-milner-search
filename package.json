@@ -4,7 +4,7 @@
     "type": "git",
     "url": "https://github.com/kedashoe/hindley-milner-search.git"
   },
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "search hindley-milner signatures",
   "main": "hm-search.js",
   "license": "MIT",
