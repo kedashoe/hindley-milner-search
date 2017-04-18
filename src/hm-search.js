@@ -8,6 +8,13 @@ function pluck(key, xs) {
   return ys;
 }
 
+function pipe(x, fs) {
+  for (var i = 0; i < fs.length; ++i) {
+    x = fs[i](x);
+  }
+  return x;
+}
+
 function when(pred, f) {
   return function(x) {
     return pred(x) ? f(x) : x;
@@ -191,17 +198,35 @@ function scoreSort(x) {
   return x.sort(scoreCmp);
 }
 
-function nameSearch(db, inputName) {
-  if (inputName === '*') {
+function nameSearch(opts, input) {
+  return function(db) {
+    if (opts.fuzzy) {
+      return nameSearchFuzzy(db, input);
+    }
+    else {
+      return nameSearchSubstring(db, input);
+    }
+  };
+}
+
+function nameSearchSubstring(db, input) {
+  input = input.toLowerCase();
+  return db.filter(function(x) {
+    return x.name.toLowerCase().indexOf(input) > -1;
+  });
+}
+
+function nameSearchFuzzy(db, input) {
+  if (input === '*') {
     return db;
   }
   else {
     var i, item, score;
     var r = [];
-    inputName = inputName.toLowerCase();
+    input = input.toLowerCase();
     for (i = 0; i < db.length; ++i) {
       item = db[i];
-      score = fuzzyScore(item.name, inputName);
+      score = fuzzyScore(item.name, input);
       if (score > 0) {
         r.push({
           item: item,
@@ -256,19 +281,21 @@ function typeSearch_(dbType, queryType) {
   }
 }
 
-function typeSearch(db, type) {
-  if (type.type === '*') {
-    return db;
-  }
-  var after = [];
-  var i, entry;
-  for (i = 0; i < db.length; ++i) {
-    entry = db[i];
-    if (typeSearch_(entry.type, type)) {
-      after.push(entry);
+function typeSearch(type) {
+  return function(db) {
+    if (type.type === '*') {
+      return db;
     }
-  }
-  return after;
+    var after = [];
+    var i, entry;
+    for (i = 0; i < db.length; ++i) {
+      entry = db[i];
+      if (typeSearch_(entry.type, type)) {
+        after.push(entry);
+      }
+    }
+    return after;
+  };
 }
 
 function compileIndexTypeVariables(item) {
@@ -276,7 +303,7 @@ function compileIndexTypeVariables(item) {
   return item;
 }
 
-function index(sigs) {
+function buildDb(sigs) {
   return (sigs
     .map(indexParse)
     .map(when(isMethod, methodToFunction))
@@ -284,17 +311,25 @@ function index(sigs) {
   );
 }
 
-function search(db, input) {
-  var parsed = searchParse(input);
-
-  db = nameSearch(db, parsed.name);
-  db = typeSearch(db, parsed.type);
-
-  return db;
+function init(data, opts) {
+  if (opts == null) {
+    opts = {
+      fuzzy: true,
+    };
+  }
+  var db = buildDb(data);
+  return {
+    search: function search(input) {
+      var parsed = searchParse(input);
+      return pipe(db, [
+        nameSearch(opts, parsed.name),
+        typeSearch(parsed.type),
+      ]);
+    },
+  };
 }
 
 module.exports = {
-  index: index,
-  search: search,
+  init: init,
 };
 

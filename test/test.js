@@ -26,14 +26,14 @@ function pluck(key, xs) {
 }
 
 let runTest = db => t => (input, expected) => {
-  let r = HMS.search(db, input);
+  let r = db.search(input);
   return t.deepEqual(pluck('signature', r), expected, input);
 };
 
-let testWith = runTest(HMS.index(data));
+let testDefaults = runTest(HMS.init(data));
 
 Tape.test('search by name', t => {
-  let run = testWith(t);
+  let run = testDefaults(t);
   run('concat', [
     'concat :: Semigroup a => a -> a -> a',
     'Maybe#concat :: Semigroup a => Maybe a ~> Maybe a -> Maybe a',
@@ -57,7 +57,7 @@ Tape.test('search by name', t => {
 });
 
 Tape.test('search by type constructor', t => {
-  let run = testWith(t);
+  let run = testDefaults(t);
   run('Maybe Integer', [
     'indexOf :: a -> List a -> Maybe Integer',
     'lastIndexOf :: a -> List a -> Maybe Integer',
@@ -67,7 +67,7 @@ Tape.test('search by type constructor', t => {
 });
 
 Tape.test('search by function', t => {
-  let run = testWith(t);
+  let run = testDefaults(t);
   run('Integer -> Integer', [
     'slice :: Integer -> Integer -> List a -> Maybe (List a)',
     'range :: Integer -> Integer -> Array Integer',
@@ -95,7 +95,7 @@ Tape.test('search by function', t => {
 });
 
 Tape.test('search by type variable', t => {
-  let run = testWith(t);
+  let run = testDefaults(t);
   run('(x -> Boolean) -> y', ['ifElse :: (a -> Boolean) -> (a -> b) -> (a -> b) -> a -> b']);
   run('a -> Either b c', [
     'Either#equals :: Either a b ~> c -> Boolean',
@@ -106,8 +106,22 @@ Tape.test('search by type variable', t => {
 });
 
 Tape.test('search by name and type', t => {
-  let run = testWith(t);
+  let run = testDefaults(t);
   run('concat :: Maybe', ['Maybe#concat :: Semigroup a => Maybe a ~> Maybe a -> Maybe a']);
+  t.end();
+});
+
+let testNonFuzzy = runTest(HMS.init(data, {
+  fuzzy: false,
+}));
+
+Tape.test('non-fuzzy search', t => {
+  let run = testNonFuzzy(t);
+  run('map', [
+    'Maybe#map :: Maybe a ~> (a -> b) -> Maybe b',
+    'mapMaybe :: (a -> Maybe b) -> Array a -> Array b',
+    'Either#map :: Either a b ~> (b -> c) -> Either a c'
+  ]);
   t.end();
 });
 
