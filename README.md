@@ -9,9 +9,9 @@ const lib = [
   'bar :: Int -> Int',
   'blam :: Int -> Maybe Int'
 ];
-const db = HMS.index(lib);
-const results = HMS.search(db, 'Int -> Maybe Int');
-consolee.log(results); /* => [{
+const db = HMS.init(lib);
+const results = db.search('Int -> Maybe Int');
+console.log(results); /* -> [{
   signature: 'blam :: Int -> Maybe Int',
   pointer: 2,
   name: 'blam',
