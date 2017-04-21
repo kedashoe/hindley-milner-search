@@ -200,11 +200,16 @@ function scoreSort(x) {
 
 function nameSearch(opts, input) {
   return function(db) {
-    if (opts.fuzzy) {
-      return nameSearchFuzzy(db, input);
+    if (input === '*') {
+      return db;
     }
     else {
-      return nameSearchSubstring(db, input);
+      if (opts.fuzzy) {
+        return nameSearchFuzzy(db, input);
+      }
+      else {
+        return nameSearchSubstring(db, input);
+      }
     }
   };
 }
@@ -217,25 +222,20 @@ function nameSearchSubstring(db, input) {
 }
 
 function nameSearchFuzzy(db, input) {
-  if (input === '*') {
-    return db;
-  }
-  else {
-    var i, item, score;
-    var r = [];
-    input = input.toLowerCase();
-    for (i = 0; i < db.length; ++i) {
-      item = db[i];
-      score = fuzzyScore(item.name, input);
-      if (score > 0) {
-        r.push({
-          item: item,
-          score: score,
-        });
-      }
+  var i, item, score;
+  var r = [];
+  input = input.toLowerCase();
+  for (i = 0; i < db.length; ++i) {
+    item = db[i];
+    score = fuzzyScore(item.name, input);
+    if (score > 0) {
+      r.push({
+        item: item,
+        score: score,
+      });
     }
-    return pluck('item', scoreSort(r));
   }
+  return pluck('item', scoreSort(r));
 }
 
 function typeSearch_(dbType, queryType) {

@@ -122,6 +122,12 @@ Tape.test('non-fuzzy search', t => {
     'mapMaybe :: (a -> Maybe b) -> Array a -> Array b',
     'Either#map :: Either a b ~> (b -> c) -> Either a c'
   ]);
+  run('a -> Either b c', [
+    'Either#equals :: Either a b ~> c -> Boolean',
+    'Either#of :: Either a b ~> c -> Either a c',
+    'Either#chain :: Either a b ~> (b -> Either a c) -> Either a c'
+  ]);
+  run('concat :: Maybe', ['Maybe#concat :: Semigroup a => Maybe a ~> Maybe a -> Maybe a']);
   t.end();
 });
 
