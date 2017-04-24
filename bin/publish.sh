@@ -25,5 +25,6 @@ for file in "${files[@]}"; do
   cp $file $publish_dir
 done
 
+make browser-standalone
 npm publish $publish_dir
 
