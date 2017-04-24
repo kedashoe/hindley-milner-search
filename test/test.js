@@ -3,20 +3,6 @@ let Tape = require('tape');
 let HMS = require('../src/hm-search.js');
 let data = require('./data.json');
 
-Error.stackTraceLimit = Infinity;
-global.cl = console.log.bind(console);
-global.show = x => JSON.stringify(x, null, 2);
-let _showType = (t, depth) => {
-  let s = '  '.repeat(depth)+`${t.type}(${t.text})\n`;
-  for (let i = 0; i < t.children.length; ++i) {
-    s += _showType(t.children[i], depth + 1);
-  }
-  return s;
-};
-global.showType = t => {
-  return _showType(t, 0);
-}
-
 function pluck(key, xs) {
   var ys = [];
   for (var i = 0; i < xs.length; ++i) {
@@ -27,7 +13,7 @@ function pluck(key, xs) {
 
 let runTest = db => t => (input, expected) => {
   let r = db.search(input);
-  return t.deepEqual(pluck('signature', r), expected, input);
+  return t.deepEqual(pluck('signature', r).sort(), expected, input);
 };
 
 let testDefaults = runTest(HMS.init(data));
@@ -35,24 +21,29 @@ let testDefaults = runTest(HMS.init(data));
 Tape.test('search by name', t => {
   let run = testDefaults(t);
   run('concat', [
-    'concat :: Semigroup a => a -> a -> a',
+    'Either#concat :: (Semigroup a, Semigroup b) => Either a b ~> Either a b -> Either a b',
     'Maybe#concat :: Semigroup a => Maybe a ~> Maybe a -> Maybe a',
-    'Either#concat :: (Semigroup a, Semigroup b) => Either a b ~> Either a b -> Either a b'
+    'concat :: Semigroup a => a -> a -> a'
   ]);
-  run('flip', ['flip :: ((a, b) -> c) -> b -> a -> c']);
-  run('zzzzz', []);
+  run('flip', [
+    'flip :: ((a, b) -> c) -> b -> a -> c'
+  ]);
+  run('zzzzz', [
+  ]);
   run('map', [
-    'mapMaybe :: (a -> Maybe b) -> Array a -> Array b',
     'Either#map :: Either a b ~> (b -> c) -> Either a c',
+    'Maybe#@@type :: Maybe a ~> String',
     'Maybe#ap :: Maybe (a -> b) ~> Maybe a -> Maybe b',
-    'MaybeType :: Type -> Type',
+    'Maybe#empty :: Maybe a ~> Maybe a',
+    'Maybe#inspect :: Maybe a ~> () -> String',
     'Maybe#map :: Maybe a ~> (a -> b) -> Maybe b',
     'Maybe.empty :: () -> Maybe a',
-    'Maybe#empty :: Maybe a ~> Maybe a',
-    'Maybe#@@type :: Maybe a ~> String',
-    'Maybe#inspect :: Maybe a ~> () -> String'
+    'MaybeType :: Type -> Type',
+    'mapMaybe :: (a -> Maybe b) -> Array a -> Array b'
   ]);
-  run('Maybe#map', ['Maybe#map :: Maybe a ~> (a -> b) -> Maybe b']);
+  run('Maybe#map', [
+    'Maybe#map :: Maybe a ~> (a -> b) -> Maybe b'
+  ]);
   t.end();
 });
 
@@ -66,26 +57,50 @@ Tape.test('search by type constructor', t => {
   t.end();
 });
 
+// a single uppercase word could be a name or type
+Tape.test('search by name or type', t => {
+  let run = testDefaults(t);
+  run('Integ', [
+    'IntegBar :: Integer -> Bool',
+    'IntegFoo :: a -> b',
+    'at :: Integer -> List a -> Maybe a',
+    'drop :: Integer -> List a -> Maybe (List a)',
+    'dropLast :: Integer -> List a -> Maybe (List a)',
+    'even :: Integer -> Boolean',
+    'indexOf :: a -> List a -> Maybe Integer',
+    'lastIndexOf :: a -> List a -> Maybe Integer',
+    'odd :: Integer -> Boolean',
+    'parseInt :: Integer -> String -> Maybe Integer',
+    'range :: Integer -> Integer -> Array Integer',
+    'slice :: Integer -> Integer -> List a -> Maybe (List a)',
+    'take :: Integer -> List a -> Maybe (List a)',
+    'takeLast :: Integer -> List a -> Maybe (List a)'
+  ]);
+  t.end();
+});
+
 Tape.test('search by function', t => {
   let run = testDefaults(t);
   run('Integer -> Integer', [
-    'slice :: Integer -> Integer -> List a -> Maybe (List a)',
+    'parseInt :: Integer -> String -> Maybe Integer',
     'range :: Integer -> Integer -> Array Integer',
-    'parseInt :: Integer -> String -> Maybe Integer'
+    'slice :: Integer -> Integer -> List a -> Maybe (List a)'
   ]);
   run('a -> Maybe b', [
-    'Maybe#equals :: Maybe a ~> b -> Boolean',
     'Maybe#ap :: Maybe (a -> b) ~> Maybe a -> Maybe b',
-    'Maybe#of :: Maybe a ~> b -> Maybe b',
     'Maybe#chain :: Maybe a ~> (a -> Maybe b) -> Maybe b',
+    'Maybe#equals :: Maybe a ~> b -> Boolean',
+    'Maybe#of :: Maybe a ~> b -> Maybe b',
     'Maybe#reduce :: Maybe a ~> ((b, a) -> b) -> b -> b',
-    'maybe :: b -> (a -> b) -> Maybe a -> b',
-    'maybe_ :: (() -> b) -> (a -> b) -> Maybe a -> b',
+    'eitherToMaybe :: Either a b -> Maybe b',
     'encase :: (a -> b) -> a -> Maybe b',
+    'maybe :: b -> (a -> b) -> Maybe a -> b',
     'maybeToEither :: a -> Maybe b -> Either a b',
+    'maybe_ :: (() -> b) -> (a -> b) -> Maybe a -> b'
+  ]);
+  run('Either -> Maybe', [
     'eitherToMaybe :: Either a b -> Maybe b'
   ]);
-  run('Either -> Maybe', ['eitherToMaybe :: Either a b -> Maybe b']);
   run('(a -> b) -> f a', [
     'lift :: Functor f => (a -> b) -> f a -> f b',
     'lift2 :: Apply f => (a -> b -> c) -> f a -> f b -> f c',
@@ -96,18 +111,22 @@ Tape.test('search by function', t => {
 
 Tape.test('search by type variable', t => {
   let run = testDefaults(t);
-  run('(x -> Boolean) -> y', ['ifElse :: (a -> Boolean) -> (a -> b) -> (a -> b) -> a -> b']);
+  run('(x -> Boolean) -> y', [
+    'ifElse :: (a -> Boolean) -> (a -> b) -> (a -> b) -> a -> b'
+  ]);
   run('a -> Either b c', [
+    'Either#chain :: Either a b ~> (b -> Either a c) -> Either a c',
     'Either#equals :: Either a b ~> c -> Boolean',
-    'Either#of :: Either a b ~> c -> Either a c',
-    'Either#chain :: Either a b ~> (b -> Either a c) -> Either a c'
+    'Either#of :: Either a b ~> c -> Either a c'
   ]);
   t.end();
 });
 
 Tape.test('search by name and type', t => {
   let run = testDefaults(t);
-  run('concat :: Maybe', ['Maybe#concat :: Semigroup a => Maybe a ~> Maybe a -> Maybe a']);
+  run('concat :: Maybe', [
+    'Maybe#concat :: Semigroup a => Maybe a ~> Maybe a -> Maybe a'
+  ]);
   t.end();
 });
 
@@ -118,16 +137,18 @@ let testNonFuzzy = runTest(HMS.init(data, {
 Tape.test('non-fuzzy search', t => {
   let run = testNonFuzzy(t);
   run('map', [
+    'Either#map :: Either a b ~> (b -> c) -> Either a c',
     'Maybe#map :: Maybe a ~> (a -> b) -> Maybe b',
-    'mapMaybe :: (a -> Maybe b) -> Array a -> Array b',
-    'Either#map :: Either a b ~> (b -> c) -> Either a c'
+    'mapMaybe :: (a -> Maybe b) -> Array a -> Array b'
   ]);
   run('a -> Either b c', [
+    'Either#chain :: Either a b ~> (b -> Either a c) -> Either a c',
     'Either#equals :: Either a b ~> c -> Boolean',
-    'Either#of :: Either a b ~> c -> Either a c',
-    'Either#chain :: Either a b ~> (b -> Either a c) -> Either a c'
+    'Either#of :: Either a b ~> c -> Either a c'
   ]);
-  run('concat :: Maybe', ['Maybe#concat :: Semigroup a => Maybe a ~> Maybe a -> Maybe a']);
+  run('concat :: Maybe', [
+    'Maybe#concat :: Semigroup a => Maybe a ~> Maybe a -> Maybe a'
+  ]);
   t.end();
 });
 

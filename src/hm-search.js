@@ -1,13 +1,5 @@
 var HMP = require('hindley-milner-parser-js');
 
-function pluck(key, xs) {
-  var ys = [];
-  for (var i = 0; i < xs.length; ++i) {
-    ys.push(xs[i][key]);
-  }
-  return ys;
-}
-
 function pipe(x, fs) {
   for (var i = 0; i < fs.length; ++i) {
     x = fs[i](x);
@@ -18,6 +10,28 @@ function pipe(x, fs) {
 function when(pred, f) {
   return function(x) {
     return pred(x) ? f(x) : x;
+  };
+}
+
+function or(preds) {
+  return function(opts, x) {
+    for (var i = 0; i < preds.length; ++i) {
+      if (preds[i](opts, x)) {
+        return true;
+      }
+    }
+    return false;
+  };
+}
+
+function and(preds) {
+  return function(opts, x) {
+    for (var i = 0; i < preds.length; ++i) {
+      if (!preds[i](opts, x)) {
+        return false;
+      }
+    }
+    return true;
   };
 }
 
@@ -97,17 +111,6 @@ function databaseParse(sig) {
   return x;
 }
 
-var MATCH_ALL_TYPES = {
-  type: '*',
-  text: '',
-  children: []
-};
-var MATCH_ALL = {
-  name: '*',
-  constraints: [],
-  type: MATCH_ALL_TYPES,
-};
-
 function nameParser(x) {
   x = x.trim();
   var spaceIdx = x.indexOf(' ');
@@ -115,46 +118,87 @@ function nameParser(x) {
   return {
     name: name,
     constraints: [],
-    type: MATCH_ALL_TYPES
+    type: false,
   };
 }
 
-var searchParsers = [
-  HMP.parse,
-  HMP.fn,
-  HMP.method,
-  HMP.typeConstructor,
-  nameParser,
-];
-
-function runParsers(x) {
-  var i;
-  for (i = 0; i < searchParsers.length; ++i) {
-    try {
-      return searchParsers[i](x);
-    }
-    catch (e) {}
+function tryParser(name, x) {
+  try {
+    var parsed = HMP[name](x);
+    return [name, parsed];
   }
-  throw new Error('Could not parse search input (' + x + ')');
+  catch (e) {
+    return false;
+  }
 }
 
-function searchParse(x) {
-  if (x === '') {
-    return MATCH_ALL;
+/*
+ * `HMP.parse` returns a record:
+ * Signature {
+ *   name: String,
+ *   constraints: [Constraint],
+ *   type: TypeTree
+ * }
+ * The rest of the parsers we try (`fn`, etc) simply return a TypeTree.
+ * If `parse` fails and one of the others succeeds,
+ * wrap the TypeTree in a Signature
+ */
+function wrapParsedTypeNode(parsed) {
+  return [
+    parsed[0],
+    {
+      name: false,
+      constraints: [],
+      type: parsed[1]
+    }
+  ];
+}
+
+function runParsers(x) {
+  // try to parse as complete signature
+  var parsed = tryParser('parse', x);
+  if (parsed !== false) {
+    return parsed;
   }
   else {
-    var parsed = runParsers(x);
-    if (!parsed.name) {
-      parsed = {
-        name: '*',
-        constraints: [],
-        type: parsed,
-      };
+    // try other parsers that we want to allow users to search for
+    var searchParsers = [
+      'fn',
+      'method',
+      'typeConstructor',
+    ];
+    for (var i = 0; i < searchParsers.length; ++i) {
+      parsed = tryParser(searchParsers[i], x);
+      if (parsed !== false) {
+        return wrapParsedTypeNode(parsed);
+      }
     }
-    if (parsed.type.type !== '*') {
-      parsed.type = compileTypeVariables(parsed.type);
+    // hindley milner parsings failed, return name search
+    return ['name', nameParser(x)];
+  }
+}
+
+// :: String -> (Signature -> Bool)
+function searchParse(x) {
+  var parsed = runParsers(x);
+  var by = parsed[0];
+  var ast = parsed[1];
+  if (ast.type !== false) {
+    ast.type = compileTypeVariables(ast.type);
+  }
+  // special case: a single uppercase word could be a name or typeConstructor
+  if (by === 'typeConstructor' && /^\S+$/.test(x)) {
+    return or([nameSearch(nameParser(x)), typeSearch(ast)]);
+  }
+  else {
+    var preds = [];
+    if (ast.name !== false) {
+      preds.push(nameSearch(ast));
     }
-    return parsed;
+    if (ast.type !== false) {
+      preds.push(typeSearch(ast));
+    }
+    return and(preds);
   }
 }
 
@@ -185,57 +229,25 @@ function fuzzyScore(item, input) {
   return score / item.length;
 }
 
-function scoreCmp(a, b) {
-  if (a.score !== b.score) {
-    return b.score - a.score;
-  }
-  else {
-    return b.item.name > a.item.name ? 1 : -1;
-  }
-}
-
-function scoreSort(x) {
-  return x.sort(scoreCmp);
-}
-
-function nameSearch(opts, input) {
-  return function(db) {
-    if (input === '*') {
-      return db;
+function nameSearch(input) {
+  return function(opts, item) {
+    var itemName = item.name.toLowerCase();
+    var inputName = input.name.toLowerCase();
+    if (opts.fuzzy) {
+      return nameSearchFuzzy(itemName, inputName);
     }
     else {
-      if (opts.fuzzy) {
-        return nameSearchFuzzy(db, input);
-      }
-      else {
-        return nameSearchSubstring(db, input);
-      }
+      return nameSearchSubstring(itemName, inputName);
     }
   };
 }
 
-function nameSearchSubstring(db, input) {
-  input = input.toLowerCase();
-  return db.filter(function(x) {
-    return x.name.toLowerCase().indexOf(input) > -1;
-  });
+function nameSearchSubstring(itemName, inputName) {
+  return itemName.indexOf(inputName) > -1;
 }
 
-function nameSearchFuzzy(db, input) {
-  var i, item, score;
-  var r = [];
-  input = input.toLowerCase();
-  for (i = 0; i < db.length; ++i) {
-    item = db[i];
-    score = fuzzyScore(item.name, input);
-    if (score > 0) {
-      r.push({
-        item: item,
-        score: score,
-      });
-    }
-  }
-  return pluck('item', scoreSort(r));
+function nameSearchFuzzy(itemName, inputName) {
+  return fuzzyScore(itemName, inputName) > 0;
 }
 
 function typeSearch_(dbType, queryType) {
@@ -281,20 +293,9 @@ function typeSearch_(dbType, queryType) {
   }
 }
 
-function typeSearch(type) {
-  return function(db) {
-    if (type.type === '*') {
-      return db;
-    }
-    var after = [];
-    var i, entry;
-    for (i = 0; i < db.length; ++i) {
-      entry = db[i];
-      if (typeSearch_(entry.type, type)) {
-        after.push(entry);
-      }
-    }
-    return after;
+function typeSearch(input) {
+  return function(opts, item) {
+    return typeSearch_(item.type, input.type);
   };
 }
 
@@ -320,11 +321,14 @@ function init(data, opts) {
   var db = buildDb(data);
   return {
     search: function search(input) {
-      var parsed = searchParse(input);
-      return pipe(db, [
-        nameSearch(opts, parsed.name),
-        typeSearch(parsed.type),
-      ]);
+      // if input is empty, return everything
+      if (input.trim() === '') {
+        return db;
+      }
+      var test = searchParse(input);
+      return db.filter(function(x) {
+        return test(opts, x);
+      });
     },
   };
 }

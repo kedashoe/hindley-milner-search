@@ -10,6 +10,8 @@
   "C :: (a -> b -> c) -> b -> a -> c",
   "B :: (b -> c) -> (a -> b) -> a -> c",
   "S :: (a -> b -> c) -> (a -> b) -> a -> c",
+  "IntegFoo :: a -> b",
+  "IntegBar :: Integer -> Bool",
   "curry2 :: ((a, b) -> c) -> a -> b -> c",
   "curry3 :: ((a, b, c) -> d) -> a -> b -> c -> d",
   "curry4 :: ((a, b, c, d) -> e) -> a -> b -> c -> d -> e",
